@@ -51,7 +51,6 @@ int main(int argc, char * argv[]){
         return 1;
     }
 
-
     port = atoi(argv[2]);
      
     lookup_host(argv[1], &adr);
