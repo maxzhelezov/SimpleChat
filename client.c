@@ -9,9 +9,29 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <poll.h>
+#include <netdb.h>
 
 #define BUF_SIZE 256
 #define MAX_DESC 2
+
+int lookup_host(const char *host, struct sockaddr_in * adr){
+    struct addrinfo *res, *result;
+    int errcode;
+
+    errcode = getaddrinfo(host, NULL, NULL, &result);
+    if (errcode != 0)
+    {
+        fprintf(stderr, "%s (%d): Введен неверный ip адрес : %s\n",
+                __FILE__, __LINE__ - 4,  strerror(errno)); 
+        freeaddrinfo(result);
+        exit(1);
+    }
+      
+    res = result;
+    memcpy(adr, res->ai_addr, sizeof(struct sockaddr_in));
+    freeaddrinfo(result);
+    return 0;
+}
 
 int main(int argc, char * argv[]){
     int main_socket, port, events, i;
@@ -22,19 +42,30 @@ int main(int argc, char * argv[]){
     struct pollfd fds[MAX_DESC]; 
 
     if(argc < 3){
-        fprintf(stderr,"Необходимо указать номер порта в параметрах\n");
+        fprintf(stderr,"Необходимо указать адрес и номер порта в параметрах\n");
         return 1;
     }
 
+    if(argc > 3){
+        fprintf(stderr,"Необходимо указать адрес и номер порта в параметрах\n");
+        return 1;
+    }
+
+
     port = atoi(argv[2]);
      
+    lookup_host(argv[1], &adr);
     adr.sin_family = AF_INET;
     adr.sin_port = htons(port);
+    /*
     if(inet_aton(argv[1], &(adr.sin_addr)) == -1){
          fprintf(stderr, "%s (%d): Введен неверный ip адрес : %s\n",
                 __FILE__, __LINE__ - 3,  strerror(errno)); 
         exit(1);
     }
+    */
+    printf("Connecting to %s (%s)...\n", argv[1], inet_ntoa(adr.sin_addr));
+    
 
     main_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (main_socket == -1){

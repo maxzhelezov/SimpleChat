@@ -1,5 +1,5 @@
 CC= gcc
-CFLAGS= -Wall -Wextra -ansi -g
+CFLAGS= -Wall -Wextra -g
 
 BINARIES= client.out server.out
 SOURCES= client.c server.c utils.c
