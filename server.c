@@ -84,8 +84,7 @@ int main(int argc, char * argv[]){
                 }
                 if(n_read == 0){
                     printf("клиент %d отсоединился\n",i);
-                    close(fds[i].fd);
-                    fds[i].fd = -1;
+                    i = disconnect(&fds, &clients_base, i);
                 }
                 if(n_read > 0){
                     buf[n_read] = '\0';

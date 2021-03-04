@@ -8,7 +8,7 @@
 #include <poll.h>
 #include <unistd.h>
 
-int max_fds, size_fds, max_clients, size_clients;
+int max_fds, size_fds, del_fds, max_clients, size_clients;
 
 
 /* Функция инициализирует серверный сокет */
@@ -46,6 +46,7 @@ poll_fds init_fds(){
     poll_fds temp;
     max_fds = MEM_INC_SIZE;
     size_fds = 0;
+    del_fds = 0;
     temp = malloc(sizeof(struct pollfd) * max_fds);
     if(temp == NULL){
         fprintf(stderr, "%s (%d): Структура не была создана: %s\n",
@@ -77,6 +78,50 @@ poll_fds add_fds(poll_fds fds, int fd){
 
 int get_fds_size(){
     return size_fds;
+}
+
+int delete_fds(poll_fds *fds, int id){
+    poll_fds temp;
+    int i, j, new_id = id;
+    (*fds)[id].fd = -1;
+    del_fds++;
+    /* Если мы так наудаляли на размер выделяемой памяти, то почистим массив 
+     * вручную, да долго и муторно, но писать хэш-таблицу еще муторнее :(*/
+    if(del_fds > MEM_INC_SIZE){
+        max_fds = max_fds - MEM_INC_SIZE;
+        if(max_fds < 1){
+            fprintf(stderr, "%s (%d): Ошибка внутренней структуры данных\n",
+                    __FILE__, __LINE__ - 3);  
+            exit(1);
+        }
+        temp = malloc(sizeof(struct pollfd) * max_fds);
+        if(temp == NULL){
+            fprintf(stderr, "%s (%d): Ошибка выделения памяти malloc: %s\n",
+                    __FILE__, __LINE__ - 3,  strerror(errno));  
+            exit(1);
+        }
+        for(i = 0, j = 0; i < size_fds; i++){
+            if((*fds)[i].fd != -1){
+                temp[j] = (*fds)[i];
+                if(id != -1)
+                    new_id = j;
+                j++;
+            }
+            /* Флаг, что прошли старый id, остожно портим его */
+            if(id == i)
+                id = -1;
+        }
+        size_fds = j;
+        del_fds = 0;
+        free(*fds);
+        *fds = temp;
+    }
+    return new_id;
+
+}
+
+void delete_clients(clients cl, int id){
+    return;
 }
 
 void clear_fds(poll_fds fds){
@@ -116,6 +161,14 @@ void auth2(clients cl, int client, char * str, int socket){
         write(socket, temp, size);
         free(temp);
     }        
+}
+
+int disconnect(poll_fds *fds, clients *cl, int id){
+    int new_id;
+    close((*fds)[id].fd);
+    delete_clients(cl, id);
+    new_id = delete_fds(fds, id);
+    return new_id;
 }
 
 clients init_clients(){

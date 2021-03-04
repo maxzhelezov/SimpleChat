@@ -21,13 +21,21 @@ int init_socket(int port);
 /* Функиця аутенфикации - запрос имени у клиента */
 void auth(int socket);
 
+/* Функция получения имени у клиента и занос его в базу */
 void auth2(clients cl, int client,  char * str, int socket);
+
+/* Убирает клиента из таблиц, возврщает новый id - первый не пустой до этого
+ * клиента */
+int disconnect(poll_fds *fds, clients *cl, int id);
 
 /* Инциализацаия структуры клиентов */
 clients init_clients();
 
 /* Добавить клиента */
 clients add_client(clients cl);
+
+/* Удаляет клиента с номером id из базы */
+void delete_clients(clients *cl, int id);
 
 /* Очистка структуры клиентов */
 void clean_clients(clients cl);
@@ -39,6 +47,10 @@ poll_fds init_fds();
 poll_fds add_fds(poll_fds fds, int fd);
 
 int get_fds_size();
+
+/* Удаляет fd с номером id из fds, возращает id в новой таблице, если она
+ * перемещалась */
+int delete_fds(poll_fds *fds, int id);
 
 /* Очищает структуру  fds*/
 void clear_fds(poll_fds fds);
