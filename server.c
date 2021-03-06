@@ -7,15 +7,28 @@
 #include <stdlib.h>
 #include <poll.h>
 #include "utils.h"
+#include <signal.h>
+#include "cmd.h"
 
 #define BUF_SIZE 256
 
+poll_fds fds;
+clients clients_base;
+
+void int_signal(){
+    char s[] = "### Сервер закрывается\n";
+    mass_send(fds, s, sizeof(s));
+    cleanup(fds, clients_base);
+    exit(0);
+}
+
 int main(int argc, char * argv[]){
-    int main_socket, port, events, temp_socket, i, clients_act;
+    int main_socket, port, events, temp_socket, i;
     ssize_t n_read;
     char buf[BUF_SIZE];
-    struct pollfd * fds; 
-    clients clients_base;
+
+    init_signals();
+    signal(SIGINT, int_signal);
 
     if(argc < 2){
         fprintf(stderr,"Необходимо указать номер порта в параметрах\n");
@@ -37,8 +50,6 @@ int main(int argc, char * argv[]){
                 __FILE__, __LINE__ - 3,  strerror(errno));  
         exit(1);
     }
-    
-    clients_act = 0;
     fds = add_fds(fds, main_socket);
 
     for(;;){
@@ -61,8 +72,7 @@ int main(int argc, char * argv[]){
                         __FILE__, __LINE__ - 3,  strerror(errno));  
                 exit(1);
             }
-            clients_act++;
-            printf("Клиент %d подсоединился\n", clients_act);
+            printf("Клиент %d подсоединился\n", get_fds_size());
  
             fds = add_fds(fds, temp_socket);
             clients_base = add_client(clients_base); 
@@ -83,20 +93,23 @@ int main(int argc, char * argv[]){
                     fds[i].fd = -1;
                 }
                 if(n_read == 0){
-                    printf("клиент %d отсоединился\n",i);
+                    printf("клиент %d отсоединился\n", i);
                     i = disconnect(&fds, &clients_base, i);
                 }
                 if(n_read > 0){
                     buf[n_read] = '\0';
+                    strip_beg(buf);
                     if(strcmp(clients_base[i].name, "\0") == 0)
-                        auth2(clients_base, i, buf, fds[i].fd);
+                        auth2(fds, clients_base, i, buf, fds[i].fd);
                     else{
                         strip(buf);
-                        if(cmd(buf)){
-                            /* Все сделается в cmd */;
-                        }
-                        else{
-                            msg_everyone(fds, clients_base, i, buf); 
+                        if(buf[0] != '0'){
+                            if(cmds(&fds, &clients_base, i, buf)){
+                                /* Все сделается в cmd */;
+                            }
+                            else{
+                                msg_everyone(fds, clients_base, i, buf); 
+                            }
                         }
                 
                     }

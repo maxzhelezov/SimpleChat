@@ -18,11 +18,14 @@ typedef struct client_info {
 /* Функция инициализирует серверный сокет */
 int init_socket(int port);
 
+/* Настройка сигналов */
+void init_signals();
+
 /* Функиця аутенфикации - запрос имени у клиента */
 void auth(int socket);
 
 /* Функция получения имени у клиента и занос его в базу */
-void auth2(clients cl, int client,  char * str, int socket);
+void auth2(poll_fds fds, clients cl, int client,  char * str, int socket);
 
 /* Убирает клиента из таблиц, возврщает новый id - первый не пустой до этого
  * клиента */
@@ -57,13 +60,23 @@ void clear_fds(poll_fds fds);
 
 /* Очищает строку s от начальных пробельных символов, а также от \n в конце */
 void strip(char * s);
-        
+ 
+/* Пропускает все пробельные символы в начале, возвращает новую строку без них */
+void strip_beg(char *);
+
+/* Срезает первые n символов строки s */
+void cut(char *s, int n);
+
+/* Отравка сообщения одному */
+void ind_send(poll_fds fds, int id, char *s, int size);
+
 /* Массовая рассылка сообщения s */
 void mass_send(poll_fds fds, char *s, int size);
 
 /* Пересылка особщения пользователя всем */
 void msg_everyone(poll_fds fds, clients cl, int i, char * buf);
 
-int cmd(char *buf);
+/* Очищает память для завершения */
+void cleanup(poll_fds fds, clients cl);
 
 #endif

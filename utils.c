@@ -7,9 +7,9 @@
 #include <stdlib.h>
 #include <poll.h>
 #include <unistd.h>
+#include <signal.h>
 
-int max_fds, size_fds, del_fds, max_clients, size_clients;
-
+int max_fds, size_fds, del_fds, max_clients, size_clients, del_clients;
 
 /* Функция инициализирует серверный сокет */
 int init_socket(int port){
@@ -41,6 +41,16 @@ int init_socket(int port){
 
     return main_socket;
 }
+
+void init_signals(){
+    sigset_t mask;
+
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGPIPE);
+    sigprocmask(SIG_BLOCK, &mask, NULL);
+}
+
+
 
 poll_fds init_fds(){
     poll_fds temp;
@@ -120,51 +130,58 @@ int delete_fds(poll_fds *fds, int id){
 
 }
 
-void delete_clients(clients cl, int id){
-    return;
+void delete_clients(clients *cl, int id){
+    clients temp;
+    int i, j;
+    (*cl)[id].name[0] = '\0';
+    del_clients++;
+    /* Если мы так наудаляли на размер выделяемой памяти, то почистим массив 
+     * вручную, да долго и муторно, но писать хэш-таблицу еще муторнее :(*/
+    if(del_clients > MEM_INC_SIZE){
+        max_clients = max_clients - MEM_INC_SIZE;
+        if(max_clients <= 1){
+            fprintf(stderr, "%s (%d): Ошибка внутренней структуры данных\n",
+                    __FILE__, __LINE__ - 3);  
+            exit(1);
+        }
+        temp = malloc(sizeof(struct client_info) * max_clients);
+        if(temp == NULL){
+            fprintf(stderr, "%s (%d): Ошибка выделения памяти malloc: %s\n",
+                    __FILE__, __LINE__ - 3,  strerror(errno));  
+            exit(1);
+        }
+        for(i = 1, j = 0; i < size_clients; i++)
+            if((*cl)[i].name[0] != '\0'){
+                temp[j] = (*cl)[i];
+                j++;
+            }
+        size_clients = j;
+        del_clients = 0;
+        free(*cl);
+        *cl = temp;
+    }
 }
 
 void clear_fds(poll_fds fds){
     free(fds);
     max_fds = 0;
     size_fds = 0;
-}
-
-void auth(int socket){
-    char str[] = "### Введите свое имя: \n";
-    write(socket, str, sizeof(str));
-}
-
-void auth2(clients cl, int client, char * str, int socket){
-    char s[] = "### Добро пожаловать, ", * temp;
-    char busy[] = "### Имя уже занято \n";
-    int size, i;
-    strip(str);
-    if(strcmp(str, "") == 0)
-        auth(socket);
-    else{
-        for(i = 1; i < size_clients; i ++)
-            if(strcmp(str, cl[i].name) == 0){
-                write(socket, busy, sizeof(busy));
-                auth(socket);
-                return;
-            }
-
-
-        strcpy(cl[client].name, str);
-        size = sizeof(s) + (strlen(str) + 2) * sizeof(char);
-        temp = malloc(size);
-        strcpy(temp, "");
-        strcat(temp, s);
-        strcat(temp, str);
-        strcat(temp, "!\n");
-        write(socket, temp, size);
-        free(temp);
-    }        
+    del_fds = 0;
 }
 
 int disconnect(poll_fds *fds, clients *cl, int id){
-    int new_id;
+    int new_id, len;
+    char *temp, msg[] = "*** С сервера вышел ";
+    
+    len = sizeof(msg) + strlen((*cl)[id].name) + 1;
+    temp = malloc(sizeof(char) * len);
+    strcpy(temp, "");
+    strcat(temp, msg);
+    strcat(temp, (*cl)[id].name);
+    strcat(temp, "\n");
+    mass_send(*fds, temp, len);
+    free(temp);
+
     close((*fds)[id].fd);
     delete_clients(cl, id);
     new_id = delete_fds(fds, id);
@@ -174,6 +191,7 @@ int disconnect(poll_fds *fds, clients *cl, int id){
 clients init_clients(){
     clients temp;
     size_clients = 1;
+    del_clients = 0;
     max_clients = MEM_INC_SIZE;
     temp = malloc(sizeof(struct client_info) * max_clients);
     if(temp == NULL){
@@ -181,7 +199,7 @@ clients init_clients(){
                 __FILE__, __LINE__ - 3,  strerror(errno));  
         exit(1);
     }
-     return temp;
+    return temp;
 }
 
 clients add_client(clients cl){
@@ -204,28 +222,92 @@ clients add_client(clients cl){
     return cl;
 }
 
+void clean_clients(clients cl){
+    max_clients = 0;
+    size_clients = 0;
+    del_clients = 0;
+    free(cl);
+}
+
 void strip(char * s){
     size_t pos;
+
+    strip_beg(s);
+
     pos = strcspn(s, "\n");
     s[pos] = '\0';
 
     return;
 }
 
+void strip_beg(char * s){
+    int i, len = strlen(s);
+    for(i = 0; i < len; i++)
+        if(s[i] != ' ' && s[i] != '\t')
+            break;
+    cut(s, i);
+}
+
+void cut(char *s, int n){
+    char *temp;
+    int i, len = strlen(s);
+    temp = malloc(sizeof(char) * (len - n)); 
+    for(i = 0; i < len - n; i++)
+        temp[i] = s[i + n];
+    memcpy(s, temp, len - n);
+    s[len - n] = '\0';
+    free(temp);
+}
+
+void auth(int socket){
+    char str[] = "### Введите свое имя: \n";
+    write(socket, str, sizeof(str));
+}
+
+void auth2(poll_fds fds, clients cl, int client, char * str, int socket){
+    char s[] = "*** Добро пожаловать, ", * temp;
+    char busy[] = "### Имя уже занято \n";
+    int size, i;
+    strip(str);
+    if(strcmp(str, "") == 0)
+        auth(socket);
+    else{
+        for(i = 1; i < size_clients; i ++)
+            if(strcmp(str, cl[i].name) == 0){
+                write(socket, busy, sizeof(busy));
+                auth(socket);
+                return;
+            }
+
+
+        strcpy(cl[client].name, str);
+        size = sizeof(s) + (strlen(str) + 2) * sizeof(char);
+        temp = malloc(size);
+        strcpy(temp, "");
+        strcat(temp, s);
+        strcat(temp, str);
+        strcat(temp, "!\n");
+        mass_send(fds, temp, size);  
+        free(temp);
+    }        
+}
+
+void ind_send(poll_fds fds, int id, char *s, int size){
+    write(fds[id].fd, s, size);
+}
+
 void mass_send(poll_fds fds, char *s, int size){
     int i;
     for(i = 1; i < size_fds; i++)
-        write(fds[i].fd, s, size);
-}
-
-int cmd(char * buf){
-    return 0;
+        if(fds[i].fd != -1)
+            write(fds[i].fd, s, size);
 }
 
 void msg_everyone(poll_fds fds, clients cl, int i, char *buf){
     char *temp;
     int size;
-    size = strlen(buf) + strlen(cl[i].name) + 2 + 1;
+    if(buf[0] == '\0') return;
+    size = strlen(buf) + strlen(cl[i].name) + 2 + 1 + 1;
     temp = malloc(size * sizeof(char));
     strcpy(temp, "");
     strcat(temp, cl[i].name);
@@ -234,4 +316,9 @@ void msg_everyone(poll_fds fds, clients cl, int i, char *buf){
     strcat(temp, "\n");
     mass_send(fds, temp, size);
     free(temp);
+}
+
+void cleanup(poll_fds fds, clients cl){
+    clean_clients(cl);
+    clear_fds(fds);
 }

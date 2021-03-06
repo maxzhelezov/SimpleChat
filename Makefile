@@ -2,16 +2,16 @@ CC= gcc
 CFLAGS= -Wall -Wextra -g
 
 BINARIES= client.out server.out
-SOURCES= client.c server.c utils.c
+SOURCES= client.c server.c utils.c cmd.c
 
 OBJS=$(patsubst %.c, %.o, $(SOURCES))
 
 all: $(BINARIES)
 
-client.out: client.o
+client.out: client.o utils.o
 	$(CC) $(CFLAGS) $^ -o $@
 
-server.out: server.o utils.o
+server.out: server.o utils.o cmd.o
 	$(CC) $(CFLAGS) $^ -o $@
 
 %.o: %.c 
