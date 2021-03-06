@@ -12,7 +12,8 @@
 int max_fds, size_fds, del_fds, max_clients, size_clients, del_clients, 
     size_ban, max_ban;
 char pswrd[256];
-ban pban;
+ban_type pban;
+   
 
 /* Функция инициализирует серверный сокет */
 int init_socket(int port){
@@ -191,13 +192,13 @@ clients add_client(clients cl){
     cl[size_clients].channel = 0;
     cl[size_clients].size_names = 0;
     cl[size_clients].max_names = MEM_INC_SIZE;
-    cl[size_clients].recv = malloc(sizeof(char *) * MEM_INC_SIZE);
+    cl[size_clients].recv = malloc(sizeof(char[255]) * MEM_INC_SIZE);
     size_clients++;
     return cl;
 }
 
 void add_name(clients cl, int id, char *name){
-    char **temp, *n_name;
+    char (*temp)[256], *n_name;
     if(cl[id].size_names >= cl[id].max_names){
         temp = cl[id].recv;
         cl[id].max_names += MEM_INC_SIZE;
@@ -209,19 +210,14 @@ void add_name(clients cl, int id, char *name){
             exit(1);
         }
     }
-    n_name = malloc(sizeof(char) * (strlen(name) + 1));
-    strcpy(n_name, name);
-    cl[id].recv[cl[id].size_names] = n_name;
+    strcpy(cl[id].recv[cl[id].size_names], name);
     cl[id].size_names++;
 }
 
 void clear_names(clients cl){
     int i, j;
-    for(j = 1; j < size_clients; j++){
-        for(i = 0; i < cl[j].size_names; i++)
-            free(cl[j].recv[i]);
+    for(j = 1; j < size_clients; j++)
         free(cl[j].recv);
-    }
 }
 
 int in_clients(clients cl, char * name){
@@ -237,8 +233,6 @@ void delete_clients(clients *cl, int id){
     clients temp;
     int i, j;
     (*cl)[id].name[0] = '\0';
-    for(i = 0; i < (*cl)[id].size_names; i++)
-        free((*cl)[id].recv[i]);
     free((*cl)[id].recv);
     del_clients++;
     /* Если мы так наудаляли на размер выделяемой памяти, то почистим массив 
@@ -327,7 +321,7 @@ void ban_init(){
 }
 
 void ban_name(char * name){
-    ban temp;
+    ban_type temp;
     if(size_ban >= max_ban){
         max_ban += MEM_INC_SIZE;
         temp = pban;
@@ -339,8 +333,20 @@ void ban_name(char * name){
             exit(1);
         }
     }
-    strcpy(pban -> name, name);
+    strcpy(pban[size_ban].name, name);
     size_ban++;
+}
+
+int is_banned(char * name){
+    int i;
+    for(i = 0; i < size_ban; i++)
+        if(strcmp(name, pban[i].name) == 0)
+            return 1;
+    return 0;
+}
+
+void ban_clean(){
+    free(pban);
 }
 
 void auth(int socket){
@@ -351,6 +357,7 @@ void auth(int socket){
 void auth2(poll_fds fds, clients cl, int client, char * str, int socket){
     char s[] = "*** Добро пожаловать, ", * temp;
     char busy[] = "### Имя уже занято \n";
+    char banned[] = "### Имя забанено\n";
     int size, i;
     strip(str);
     if(strcmp(str, "") == 0)
@@ -358,11 +365,16 @@ void auth2(poll_fds fds, clients cl, int client, char * str, int socket){
     else{
         for(i = 1; i < size_clients; i ++)
             if(strcmp(str, cl[i].name) == 0){
-                write(socket, busy, sizeof(busy));
+                ind_send(fds, client, busy, sizeof(busy));
                 auth(socket);
                 return;
             }
 
+        if(is_banned(str)){
+            ind_send(fds, client, banned, sizeof(banned));
+            auth(socket);
+            return;
+        }
 
         strcpy(cl[client].name, str);
         size = sizeof(s) + (strlen(str) + 2) * sizeof(char);
@@ -405,4 +417,5 @@ void msg_everyone(poll_fds fds, clients cl, int i, char *buf){
 void cleanup(poll_fds fds, clients cl){
     clean_clients(cl);
     clear_fds(fds);
+    ban_clean();
 }

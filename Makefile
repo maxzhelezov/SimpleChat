@@ -18,6 +18,7 @@ server.out: server.o utils.o cmd.o
 	$(CC) $(CFLAGS) -c $^
 
 utils.c: utils.h
+cmd.c: cmd.h
 
 clean:
 	rm -f *.o

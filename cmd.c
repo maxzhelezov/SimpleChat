@@ -185,8 +185,45 @@ void help(poll_fds *fds, clients *cl, int id, char *opt){
 }
 
 void ban(poll_fds *fds, clients *cl, int id, char *opt){
-
-
+    char *name;
+    char no_name[] = "### Отсутсвует параметр имя\n";
+    char no_pers[] = "### Такого человека нет в сети\n";
+    char no_reason[] = "### Пустая причина\n";
+    char promt[] = "### Вас забанили с сервера по причине: ";
+    int len_name, usr_id;
+    if((*cl)[id].perm < 1){
+        ind_send(*fds, id, no_perms, sizeof(no_perms));
+        return;
+    }
+    
+    if(opt[0] == '\0'){
+        ind_send(*fds, id, no_name, sizeof(no_name));
+        return;    
+    }
+    
+    name = malloc(sizeof(char) * (strlen(opt) + 1));
+    strcpy(name, opt);
+    len_name = strcspn(name, " ");
+    name[len_name] = '\0';
+    cut(opt, strlen(name));
+    strip_beg(opt);
+    if(opt[0] == '\0'){
+        ind_send(*fds, id, no_reason, sizeof(no_reason));
+        free(name);
+        return;
+    }
+    usr_id = in_clients(*cl, name);
+    if(usr_id == -1){
+        ind_send(*fds, id, no_pers, sizeof(no_pers));
+        free(name);
+        return;
+    }
+    ban_name(name);
+    free(name);
+    ind_send(*fds, usr_id, promt, sizeof(promt)); 
+    strcat(opt, "\n");
+    ind_send(*fds, usr_id, opt, strlen(opt));
+    disconnect(fds, cl, usr_id);
 }
 
 void kick(poll_fds *fds, clients *cl, int id, char *opt){
@@ -194,7 +231,7 @@ void kick(poll_fds *fds, clients *cl, int id, char *opt){
     char no_name[] = "### Отсутсвует параметр имя\n";
     char no_pers[] = "### Такого человека нет в сети\n";
     char no_reason[] = "### Пустая причина\n";
-    char promt[] = "### Вас выкинули с сервера причина: ";
+    char promt[] = "### Вас выкинули с сервера по причине: ";
     int len_name, usr_id;
     if((*cl)[id].perm < 1){
         ind_send(*fds, id, no_perms, sizeof(no_perms));

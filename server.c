@@ -43,6 +43,7 @@ int main(int argc, char * argv[]){
 
     fds = init_fds();
     clients_base = init_clients();
+    ban_init();
 
     if(fds == NULL){
         fprintf(stderr, "%s (%d): Структура не была создана: %s\n",

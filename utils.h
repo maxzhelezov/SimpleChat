@@ -13,14 +13,14 @@ typedef struct client_info {
     char name[256];
     int perm;
     int channel;
-    char **recv;
+    char (*recv)[256];
     int size_names;
     int max_names;
 } * clients; 
 
 typedef struct ban_info{
     char name[256];
-} * ban;
+} * ban_type;
 
 /* Функция инициализирует серверный сокет */
 int init_socket(int port);
