@@ -198,11 +198,11 @@ clients add_client(clients cl){
 }
 
 void add_name(clients cl, int id, char *name){
-    char (*temp)[256], *n_name;
+    char (*temp)[256];
     if(cl[id].size_names >= cl[id].max_names){
         temp = cl[id].recv;
         cl[id].max_names += MEM_INC_SIZE;
-        cl[id].recv = realloc(cl[id].recv, sizeof(char *) * cl[id].max_names);
+        cl[id].recv = realloc(cl[id].recv, sizeof(char[255]) * cl[id].max_names);
         if(cl[id].recv == NULL){
             fprintf(stderr, "%s (%d): Ошибка realloc: %s\n",
                     __FILE__, __LINE__ - 3,  strerror(errno));  
@@ -215,9 +215,10 @@ void add_name(clients cl, int id, char *name){
 }
 
 void clear_names(clients cl){
-    int i, j;
+    int j;
     for(j = 1; j < size_clients; j++)
-        free(cl[j].recv);
+        if(cl[j].name[0] != '\0')
+            free(cl[j].recv);
 }
 
 int in_clients(clients cl, char * name){

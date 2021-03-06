@@ -28,8 +28,11 @@ int main(int argc, char * argv[]){
     char buf[BUF_SIZE];
 
     init_signals();
-    signal(SIGINT, int_signal);
 
+    signal(SIGINT, int_signal);
+    signal(SIGSTOP, int_signal);
+    signal(SIGTERM, int_signal);
+    
     if(argc < 2){
         fprintf(stderr,"Необходимо указать номер порта в параметрах\n");
         return 1;

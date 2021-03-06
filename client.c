@@ -56,13 +56,6 @@ int main(int argc, char * argv[]){
     lookup_host(argv[1], &adr);
     adr.sin_family = AF_INET;
     adr.sin_port = htons(port);
-    /*
-    if(inet_aton(argv[1], &(adr.sin_addr)) == -1){
-         fprintf(stderr, "%s (%d): Введен неверный ip адрес : %s\n",
-                __FILE__, __LINE__ - 3,  strerror(errno)); 
-        exit(1);
-    }
-    */
     printf("Connecting to %s (%s)...\n", argv[1], inet_ntoa(adr.sin_addr));
     
 
