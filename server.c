@@ -36,15 +36,14 @@ int main(int argc, char * argv[]){
     }
 
     port = atoi(argv[1]);
-     
+    
+    set_pswrd();
+
     main_socket = init_socket(port);
 
     fds = init_fds();
     clients_base = init_clients();
 
-    /*
-    clients_info = malloc(sizeof(struct client_info) * (max_clients + 1));
-    */
     if(fds == NULL){
         fprintf(stderr, "%s (%d): Структура не была создана: %s\n",
                 __FILE__, __LINE__ - 3,  strerror(errno));  

@@ -114,7 +114,7 @@ int main(int argc, char * argv[]){
                             break;
                         case 1:
                             /*Закончися сервер*/
-                            fprintf(stderr, "Сервер закрыл соединение\n");
+                            fprintf(stderr, "Отключены от сервера\n");
                             exit(0);
                             break;
                     }

@@ -9,7 +9,10 @@
 #include <unistd.h>
 #include <signal.h>
 
-int max_fds, size_fds, del_fds, max_clients, size_clients, del_clients;
+int max_fds, size_fds, del_fds, max_clients, size_clients, del_clients, 
+    size_ban, max_ban;
+char pswrd[256];
+ban pban;
 
 /* Функция инициализирует серверный сокет */
 int init_socket(int port){
@@ -130,38 +133,6 @@ int delete_fds(poll_fds *fds, int id){
 
 }
 
-void delete_clients(clients *cl, int id){
-    clients temp;
-    int i, j;
-    (*cl)[id].name[0] = '\0';
-    del_clients++;
-    /* Если мы так наудаляли на размер выделяемой памяти, то почистим массив 
-     * вручную, да долго и муторно, но писать хэш-таблицу еще муторнее :(*/
-    if(del_clients > MEM_INC_SIZE){
-        max_clients = max_clients - MEM_INC_SIZE;
-        if(max_clients <= 1){
-            fprintf(stderr, "%s (%d): Ошибка внутренней структуры данных\n",
-                    __FILE__, __LINE__ - 3);  
-            exit(1);
-        }
-        temp = malloc(sizeof(struct client_info) * max_clients);
-        if(temp == NULL){
-            fprintf(stderr, "%s (%d): Ошибка выделения памяти malloc: %s\n",
-                    __FILE__, __LINE__ - 3,  strerror(errno));  
-            exit(1);
-        }
-        for(i = 1, j = 0; i < size_clients; i++)
-            if((*cl)[i].name[0] != '\0'){
-                temp[j] = (*cl)[i];
-                j++;
-            }
-        size_clients = j;
-        del_clients = 0;
-        free(*cl);
-        *cl = temp;
-    }
-}
-
 void clear_fds(poll_fds fds){
     free(fds);
     max_fds = 0;
@@ -218,14 +189,90 @@ clients add_client(clients cl){
     strcpy(cl[size_clients].name,"\0");
     cl[size_clients].perm = 0;
     cl[size_clients].channel = 0;
+    cl[size_clients].size_names = 0;
+    cl[size_clients].max_names = MEM_INC_SIZE;
+    cl[size_clients].recv = malloc(sizeof(char *) * MEM_INC_SIZE);
     size_clients++;
     return cl;
+}
+
+void add_name(clients cl, int id, char *name){
+    char **temp, *n_name;
+    if(cl[id].size_names >= cl[id].max_names){
+        temp = cl[id].recv;
+        cl[id].max_names += MEM_INC_SIZE;
+        cl[id].recv = realloc(cl[id].recv, sizeof(char *) * cl[id].max_names);
+        if(cl[id].recv == NULL){
+            fprintf(stderr, "%s (%d): Ошибка realloc: %s\n",
+                    __FILE__, __LINE__ - 3,  strerror(errno));  
+            free(temp);
+            exit(1);
+        }
+    }
+    n_name = malloc(sizeof(char) * (strlen(name) + 1));
+    strcpy(n_name, name);
+    cl[id].recv[cl[id].size_names] = n_name;
+    cl[id].size_names++;
+}
+
+void clear_names(clients cl){
+    int i, j;
+    for(j = 1; j < size_clients; j++){
+        for(i = 0; i < cl[j].size_names; i++)
+            free(cl[j].recv[i]);
+        free(cl[j].recv);
+    }
+}
+
+int in_clients(clients cl, char * name){
+    int i;
+    for(i = 1; i < size_clients; i++)
+        if(strcmp(name, cl[i].name) == 0)
+            return i;
+    return -1;
+}
+
+
+void delete_clients(clients *cl, int id){
+    clients temp;
+    int i, j;
+    (*cl)[id].name[0] = '\0';
+    for(i = 0; i < (*cl)[id].size_names; i++)
+        free((*cl)[id].recv[i]);
+    free((*cl)[id].recv);
+    del_clients++;
+    /* Если мы так наудаляли на размер выделяемой памяти, то почистим массив 
+     * вручную, да долго и муторно, но писать хэш-таблицу еще муторнее :(*/
+    if(del_clients > MEM_INC_SIZE){
+        max_clients = max_clients - MEM_INC_SIZE;
+        if(max_clients <= 1){
+            fprintf(stderr, "%s (%d): Ошибка внутренней структуры данных\n",
+                    __FILE__, __LINE__ - 3);  
+            exit(1);
+        }
+        temp = malloc(sizeof(struct client_info) * max_clients);
+        if(temp == NULL){
+            fprintf(stderr, "%s (%d): Ошибка выделения памяти malloc: %s\n",
+                    __FILE__, __LINE__ - 3,  strerror(errno));  
+            exit(1);
+        }
+        for(i = 1, j = 0; i < size_clients; i++)
+            if((*cl)[i].name[0] != '\0'){
+                temp[j] = (*cl)[i];
+                j++;
+            }
+        size_clients = j;
+        del_clients = 0;
+        free(*cl);
+        *cl = temp;
+    }
 }
 
 void clean_clients(clients cl){
     max_clients = 0;
     size_clients = 0;
     del_clients = 0;
+    clear_names(cl);
     free(cl);
 }
 
@@ -257,6 +304,43 @@ void cut(char *s, int n){
     memcpy(s, temp, len - n);
     s[len - n] = '\0';
     free(temp);
+}
+
+void set_pswrd(){
+    printf("Введите пароль администратора для сервера:\n");
+    scanf("%256s", pswrd);
+}
+
+char * get_pswrd(){
+    return pswrd;
+}
+
+void ban_init(){
+    size_ban = 0;
+    max_ban = MEM_INC_SIZE;
+    pban = malloc(sizeof(struct ban_info) * max_ban);
+    if(pban == NULL){
+        fprintf(stderr, "%s (%d): Структура не была создана: %s\n",
+                __FILE__, __LINE__ - 3,  strerror(errno));  
+        exit(1);
+    }
+}
+
+void ban_name(char * name){
+    ban temp;
+    if(size_ban >= max_ban){
+        max_ban += MEM_INC_SIZE;
+        temp = pban;
+        pban = realloc(pban, sizeof(struct ban_info) * max_ban);
+        if(pban == NULL){
+            fprintf(stderr, "%s (%d): Ошибка realloc: %s\n",
+                    __FILE__, __LINE__ - 3,  strerror(errno));  
+            free(temp);
+            exit(1);
+        }
+    }
+    strcpy(pban -> name, name);
+    size_ban++;
 }
 
 void auth(int socket){
