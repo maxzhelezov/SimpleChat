@@ -10,16 +10,16 @@
 typedef struct pollfd * poll_fds;
 
 typedef struct client_info {
-    char name[256];
+    char name[MAX_LEN];
     int perm;
     int channel;
-    char (*recv)[256];
+    char (*recv)[MAX_LEN];
     int size_names;
     int max_names;
 } * clients; 
 
 typedef struct ban_info{
-    char name[256];
+    char name[MAX_LEN];
 } * ban_type;
 
 /* Функция инициализирует серверный сокет */

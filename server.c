@@ -16,8 +16,13 @@ poll_fds fds;
 clients clients_base;
 
 void int_signal(){
+    int i;
     char s[] = "### Сервер закрывается\n";
     mass_send(fds, s, sizeof(s));
+    for(i = 0; i < get_fds_size(); i++){
+        if(fds[i].fd != -1)
+            close(fds[i].fd);
+    }
     cleanup(fds, clients_base);
     exit(0);
 }

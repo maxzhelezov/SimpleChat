@@ -11,7 +11,7 @@
 
 int max_fds, size_fds, del_fds, max_clients, size_clients, del_clients, 
     size_ban, max_ban;
-char pswrd[256];
+char pswrd[MAX_LEN];
 ban_type pban;
    
 
@@ -192,17 +192,17 @@ clients add_client(clients cl){
     cl[size_clients].channel = 0;
     cl[size_clients].size_names = 0;
     cl[size_clients].max_names = MEM_INC_SIZE;
-    cl[size_clients].recv = malloc(sizeof(char[255]) * MEM_INC_SIZE);
+    cl[size_clients].recv = malloc(sizeof(char[MAX_LEN]) * MEM_INC_SIZE);
     size_clients++;
     return cl;
 }
 
 void add_name(clients cl, int id, char *name){
-    char (*temp)[256];
+    char (*temp)[MAX_LEN];
     if(cl[id].size_names >= cl[id].max_names){
         temp = cl[id].recv;
         cl[id].max_names += MEM_INC_SIZE;
-        cl[id].recv = realloc(cl[id].recv, sizeof(char[255]) * cl[id].max_names);
+        cl[id].recv = realloc(cl[id].recv, sizeof(char[MAX_LEN]) * cl[id].max_names);
         if(cl[id].recv == NULL){
             fprintf(stderr, "%s (%d): Ошибка realloc: %s\n",
                     __FILE__, __LINE__ - 3,  strerror(errno));  
@@ -217,7 +217,7 @@ void add_name(clients cl, int id, char *name){
 void clear_names(clients cl){
     int j;
     for(j = 1; j < size_clients; j++)
-        if(cl[j].name[0] != '\0')
+        if(cl[j].recv != NULL)
             free(cl[j].recv);
 }
 
@@ -235,6 +235,7 @@ void delete_clients(clients *cl, int id){
     int i, j;
     (*cl)[id].name[0] = '\0';
     free((*cl)[id].recv);
+    (*cl)[id].recv = NULL;
     del_clients++;
     /* Если мы так наудаляли на размер выделяемой памяти, то почистим массив 
      * вручную, да долго и муторно, но писать хэш-таблицу еще муторнее :(*/
@@ -247,11 +248,12 @@ void delete_clients(clients *cl, int id){
         }
         temp = malloc(sizeof(struct client_info) * max_clients);
         if(temp == NULL){
+        free((*cl)[id].recv);
             fprintf(stderr, "%s (%d): Ошибка выделения памяти malloc: %s\n",
                     __FILE__, __LINE__ - 3,  strerror(errno));  
             exit(1);
         }
-        for(i = 1, j = 0; i < size_clients; i++)
+        for(i = 1, j = 1; i < size_clients; i++)
             if((*cl)[i].name[0] != '\0'){
                 temp[j] = (*cl)[i];
                 j++;
