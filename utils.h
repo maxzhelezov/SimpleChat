@@ -9,16 +9,18 @@
 
 typedef struct pollfd * poll_fds;
 
-typedef struct client_info {
+typedef struct client_info
+{
     char name[MAX_LEN];
     int perm;
     int channel;
     char (*recv)[MAX_LEN];
     int size_names;
     int max_names;
-} * clients; 
+} * clients;
 
-typedef struct ban_info{
+typedef struct ban_info
+{
     char name[MAX_LEN];
 } * ban_type;
 
@@ -95,7 +97,7 @@ void ban_clean();
 
 /* Очищает строку s от начальных пробельных символов, а также от \n в конце */
 void strip(char * s);
- 
+
 /* Пропускает все пробельные символы в начале, возвращает новую строку без них */
 void strip_beg(char *);
 
