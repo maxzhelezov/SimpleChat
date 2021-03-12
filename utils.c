@@ -266,10 +266,10 @@ void delete_clients(clients *cl, int id){
 }
 
 void clean_clients(clients cl){
+    clear_names(cl);
     max_clients = 0;
     size_clients = 0;
     del_clients = 0;
-    clear_names(cl);
     free(cl);
 }
 

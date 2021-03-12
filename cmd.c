@@ -97,7 +97,7 @@ void users(poll_fds *fds, clients *cl, int id, char * opt){
         }
     len -= 1;
     strcat(temp, "\n");
-    ind_send(*fds, id, temp, len);
+    ind_send(*fds, id, temp, strlen(temp));
     free(temp);
 }
 
