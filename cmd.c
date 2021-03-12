@@ -63,6 +63,7 @@ int cmds(poll_fds *fds, clients *cl, int id, char * buf){
         /* Да получается медленно, можно придумать какой-нибудь простой хэш */
         if(strncmp(buf, cmds_str[i].cmd_str, strlen(cmds_str[i].cmd_str)) == 0){
             temp = malloc(sizeof(char) * (strlen(buf) + 1));
+            check_malloc(temp, __FILE__, __LINE__);
             strcpy(temp, buf);
             cut(temp, strlen(cmds_str[i].cmd_str));
             if(temp[0] == ' ' || temp[0] == '\t' || temp[0] == '\0'){
@@ -87,6 +88,7 @@ void users(poll_fds *fds, clients *cl, int id, char * opt){
     for(i = 1; i < get_fds_size(); i++)
         len += strlen((*cl)[i].name) + 2;
     temp = malloc(sizeof(char) * len);
+    check_malloc(temp, __FILE__, __LINE__);
     strcpy(temp, "");
     strcat(temp, msg);
     for(i = 1; i < get_fds_size(); i++)
@@ -119,6 +121,7 @@ void private(poll_fds *fds, clients *cl, int id, char *opt){
     }
     
     name = malloc(sizeof(char) * (strlen(opt) + 1));
+    check_malloc(name, __FILE__, __LINE__);
     strcpy(name, opt);
     len_name = strcspn(name, " ");
     name[len_name] = '\0';
@@ -157,6 +160,7 @@ void privates(poll_fds *fds, clients *cl, int id, char *opt){
         len += strlen((*cl)[id].recv[i]) + 2;
     len += 1;
     temp = malloc(sizeof(char) * len);
+    check_malloc(temp, __FILE__, __LINE__);
     strcpy(temp, promt);
     for(i = 0; i < (*cl)[id].size_names; i++){
         strcat(temp, (*cl)[id].recv[i]);
@@ -175,6 +179,7 @@ void help(poll_fds *fds, clients *cl, int id, char *opt){
     for(i = 0; i < LAST - 1; i++)
         len += strlen(cmds_str[i].help) + strlen(cmds_str[i].cmd_str);
     temp = malloc(sizeof(char) * len);
+    check_malloc(temp, __FILE__, __LINE__);
     strcpy(temp, promt);
     for(i = 0; i < LAST - 1; i++){
         strcat(temp, cmds_str[i].cmd_str);
@@ -202,6 +207,7 @@ void ban(poll_fds *fds, clients *cl, int id, char *opt){
     }
     
     name = malloc(sizeof(char) * (strlen(opt) + 1));
+    check_malloc(name, __FILE__, __LINE__);
     strcpy(name, opt);
     len_name = strcspn(name, " ");
     name[len_name] = '\0';
@@ -244,6 +250,7 @@ void kick(poll_fds *fds, clients *cl, int id, char *opt){
     }
     
     name = malloc(sizeof(char) * (strlen(opt) + 1));
+    check_malloc(name, __FILE__, __LINE__);
     strcpy(name, opt);
     len_name = strcspn(name, " ");
     name[len_name] = '\0';

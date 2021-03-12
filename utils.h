@@ -114,4 +114,6 @@ void msg_everyone(poll_fds fds, clients cl, int i, char * buf);
 /* Очищает память для завершения */
 void cleanup(poll_fds fds, clients cl);
 
+/* Проверка на ошибку malloc */
+void check_malloc(void * ptr, char * file, int line);
 #endif

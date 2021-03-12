@@ -62,11 +62,7 @@ poll_fds init_fds(){
     size_fds = 0;
     del_fds = 0;
     temp = malloc(sizeof(struct pollfd) * max_fds);
-    if(temp == NULL){
-        fprintf(stderr, "%s (%d): Структура не была создана: %s\n",
-                __FILE__, __LINE__ - 3,  strerror(errno));  
-        exit(1);
-    }
+    check_malloc(temp, __FILE__, __LINE__);
     return temp;
 }
 
@@ -109,11 +105,7 @@ int delete_fds(poll_fds *fds, int id){
             exit(1);
         }
         temp = malloc(sizeof(struct pollfd) * max_fds);
-        if(temp == NULL){
-            fprintf(stderr, "%s (%d): Ошибка выделения памяти malloc: %s\n",
-                    __FILE__, __LINE__ - 3,  strerror(errno));  
-            exit(1);
-        }
+        check_malloc(temp, __FILE__, __LINE__);
         for(i = 0, j = 0; i < size_fds; i++){
             if((*fds)[i].fd != -1){
                 temp[j] = (*fds)[i];
@@ -147,6 +139,7 @@ int disconnect(poll_fds *fds, clients *cl, int id){
     
     len = sizeof(msg) + strlen((*cl)[id].name) + 1;
     temp = malloc(sizeof(char) * len);
+    check_malloc(temp, __FILE__, __LINE__);
     strcpy(temp, "");
     strcat(temp, msg);
     strcat(temp, (*cl)[id].name);
@@ -166,11 +159,7 @@ clients init_clients(){
     del_clients = 0;
     max_clients = MEM_INC_SIZE;
     temp = malloc(sizeof(struct client_info) * max_clients);
-    if(temp == NULL){
-        fprintf(stderr, "%s (%d): Структура не была создана: %s\n",
-                __FILE__, __LINE__ - 3,  strerror(errno));  
-        exit(1);
-    }
+    check_malloc(temp, __FILE__, __LINE__);
     return temp;
 }
 
@@ -193,6 +182,7 @@ clients add_client(clients cl){
     cl[size_clients].size_names = 0;
     cl[size_clients].max_names = MEM_INC_SIZE;
     cl[size_clients].recv = malloc(sizeof(char[MAX_LEN]) * MEM_INC_SIZE);
+    check_malloc(cl[size_clients].recv, __FILE__, __LINE__);
     size_clients++;
     return cl;
 }
@@ -296,6 +286,11 @@ void cut(char *s, int n){
     char *temp;
     int i, len = strlen(s);
     temp = malloc(sizeof(char) * (len - n)); 
+    if(temp == NULL){    
+        fprintf(stderr, "%s (%d): Ошибка выделения памяти malloc: %s\n",
+                    __FILE__, __LINE__ - 3,  strerror(errno));  
+        exit(1);
+    }
     for(i = 0; i < len - n; i++)
         temp[i] = s[i + n];
     memcpy(s, temp, len - n);
@@ -382,6 +377,7 @@ void auth2(poll_fds fds, clients cl, int client, char * str, int socket){
         strcpy(cl[client].name, str);
         size = sizeof(s) + (strlen(str) + 2) * sizeof(char);
         temp = malloc(size);
+        check_malloc(temp, __FILE__, __LINE__);
         strcpy(temp, "");
         strcat(temp, s);
         strcat(temp, str);
@@ -408,6 +404,7 @@ void msg_everyone(poll_fds fds, clients cl, int i, char *buf){
     if(buf[0] == '\0') return;
     size = strlen(buf) + strlen(cl[i].name) + 2 + 1 + 1;
     temp = malloc(size * sizeof(char));
+    check_malloc(temp, __FILE__, __LINE__);
     strcpy(temp, "");
     strcat(temp, cl[i].name);
     strcat(temp, ": ");
@@ -421,4 +418,12 @@ void cleanup(poll_fds fds, clients cl){
     clean_clients(cl);
     clear_fds(fds);
     ban_clean();
+}
+
+void check_malloc(void * ptr, char * file, int line){
+    if(ptr == NULL){
+        fprintf(stderr, "%s (%d): Ошибка выделения памяти: %s\n",
+                file, line - 1,  strerror(errno));  
+        exit(1);
+    }
 }
