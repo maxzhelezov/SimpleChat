@@ -18,7 +18,7 @@ ban_type pban;
 /* Функция инициализирует серверный сокет */
 int init_socket(int port)
 {
-    int main_socket;
+    int main_socket, opt = 1;
     struct sockaddr_in adr;
 
     adr.sin_family = AF_INET;
@@ -32,6 +32,8 @@ int init_socket(int port)
                 __FILE__, __LINE__ - 3,  strerror(errno));
         exit(1);
     }
+
+	setsockopt(main_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)); 
 
     if(bind(main_socket, (struct sockaddr *) &adr, sizeof(adr)) == -1)
     {
@@ -204,6 +206,8 @@ clients add_client(clients cl)
     cl[size_clients].max_names = MEM_INC_SIZE;
     cl[size_clients].recv = malloc(sizeof(char[MAX_LEN]) * MEM_INC_SIZE);
     check_malloc(cl[size_clients].recv, __FILE__, __LINE__);
+    strcpy(cl[size_clients].msg, "\0");
+    cl[size_clients].msg_len = 0;
     size_clients++;
     return cl;
 }
@@ -298,13 +302,10 @@ void clean_clients(clients cl)
 void strip(char * s)
 {
     size_t pos;
-
     strip_beg(s);
-
+    
     pos = strcspn(s, "\n");
     s[pos] = '\0';
-
-    return;
 }
 
 void strip_beg(char * s)
@@ -314,6 +315,37 @@ void strip_beg(char * s)
         if(s[i] != ' ' && s[i] != '\t')
             break;
     cut(s, i);
+}
+
+char * add_to_buf(clients cl, int id, char * s){
+    char *buf;
+    size_t pos;
+    buf = malloc(sizeof(char)*MAX_LEN);
+    check_malloc(buf, __FILE__, __LINE__);
+    if(cl[id].msg_len + strlen(s) > MAX_LEN - 1){
+        strncat(cl[id].msg, s, MAX_LEN - cl[id].msg_len - 1);
+        cl[id].msg[MAX_LEN - 1] = '\0';
+        strcpy(buf, cl[id].msg);
+        cut(s, MAX_LEN - cl[id].msg_len);
+        strcpy(cl[id].msg, s);
+        cl[id].msg_len = strlen(s);
+        return buf;
+    }
+    else{
+        strcat(cl[id].msg, s);
+        cl[id].msg_len = strlen(cl[id].msg);
+        pos = strcspn(cl[id].msg, "\n");
+        if(pos == strlen(cl[id].msg)){
+            free(buf);
+            return NULL;
+        }
+        strncpy(buf, cl[id].msg, pos);
+        buf[pos] = '\0';
+        cut(cl[id].msg, pos + 1);
+        cl[id].msg_len = strlen(cl[id].msg);
+
+        return buf;
+    }
 }
 
 void cut(char *s, int n)

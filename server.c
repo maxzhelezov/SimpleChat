@@ -33,7 +33,8 @@ int main(int argc, char * argv[])
 {
     int main_socket, port, events, temp_socket, i;
     ssize_t n_read;
-    char buf[BUF_SIZE];
+    char buf[BUF_SIZE + 1];
+    char *msg;
 
     init_signals();
 
@@ -104,7 +105,7 @@ int main(int argc, char * argv[])
         {
             if(fds[i].revents)
             {
-                n_read = read(fds[i].fd, buf, BUF_SIZE);
+                n_read = read(fds[i].fd, buf, BUF_SIZE + 1);
                 if(n_read == -1)
                 {
                     fprintf(stderr, "%s (%d): Ошибка при чтении из сокета: %s\n",
@@ -125,18 +126,22 @@ int main(int argc, char * argv[])
                         auth2(fds, clients_base, i, buf, fds[i].fd);
                     else
                     {
-                        strip(buf);
-                        if(buf[0] != '0')
+                        strip_beg(buf);
+                        msg = add_to_buf(clients_base, i, buf);
+                        if(msg == NULL)
+                            continue;
+                        if(msg[0] != '\0')
                         {
-                            if(cmds(&fds, &clients_base, i, buf))
+                            if(cmds(&fds, &clients_base, i, msg))
                             {
                                 /* Все сделается в cmd */;
                             }
                             else
                             {
-                                msg_everyone(fds, clients_base, i, buf);
+                                msg_everyone(fds, clients_base, i, msg);
                             }
                         }
+                        free(msg);
 
                     }
                 }

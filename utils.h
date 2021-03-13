@@ -15,6 +15,8 @@ typedef struct client_info
     int perm;
     int channel;
     char (*recv)[MAX_LEN];
+    char msg[MAX_LEN];
+    int msg_len;
     int size_names;
     int max_names;
 } * clients;
@@ -95,11 +97,15 @@ int is_banned(char *name);
 /* Очитска структуры */
 void ban_clean();
 
-/* Очищает строку s от начальных пробельных символов, а также от \n в конце */
+/* Очищает строку s от начальных пробельных символов */
 void strip(char * s);
 
 /* Пропускает все пробельные символы в начале, возвращает новую строку без них */
 void strip_beg(char *);
+
+/* Добавляет строку сообщения в буфер пользователя, возвращает ссылку на готовое 
+ * сообщение по \n или заполенению буфера или NULL, если не готово еще*/
+char * add_to_buf(clients cl, int id, char *s);
 
 /* Срезает первые n символов строки s */
 void cut(char *s, int n);
